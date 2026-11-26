@@ -49,6 +49,7 @@ public partial class App : Application
         builder.Services.AddSingleton<ILogiDeviceCollection, LogiDeviceCollection>();
 
         builder.Services.AddSingleton<MainTaskbarIconWrapper>();
+        builder.Services.AddSingleton<TaskbarWidgetManager>();
         builder.Services.AddHostedService<NotifyIconViewModel>();
 
         var host = builder.Build();

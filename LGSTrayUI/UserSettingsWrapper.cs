@@ -20,6 +20,18 @@ namespace LGSTrayUI
             }
         }
 
+        public bool TaskbarWidget
+        {
+            get => Properties.Settings.Default.TaskbarWidget;
+            set
+            {
+                Properties.Settings.Default.TaskbarWidget = value;
+                Properties.Settings.Default.Save();
+
+                OnPropertyChanged();
+            }
+        }
+
         public void AddDevice(string deviceId)
         {
             if (Properties.Settings.Default.SelectedDevices.Contains(deviceId))

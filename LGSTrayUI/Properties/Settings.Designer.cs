@@ -48,5 +48,17 @@ namespace LGSTrayUI.Properties {
                 this["NumericDisplay"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool TaskbarWidget {
+            get {
+                return ((bool)(this["TaskbarWidget"]));
+            }
+            set {
+                this["TaskbarWidget"] = value;
+            }
+        }
     }
 }

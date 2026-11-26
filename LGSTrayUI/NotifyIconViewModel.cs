@@ -19,6 +19,7 @@ namespace LGSTrayUI
     public partial class NotifyIconViewModel : ObservableObject, IHostedService
     {
         private readonly MainTaskbarIconWrapper _mainTaskbarIconWrapper;
+        private readonly TaskbarWidgetManager _taskbarWidgetManager;
 
         [ObservableProperty]
         private ObservableCollection<LogiDeviceViewModel> _logiDevices;
@@ -34,6 +35,16 @@ namespace LGSTrayUI
             set
             {
                 _userSettings.NumericDisplay = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool TaskbarWidget
+        {
+            get => _userSettings.TaskbarWidget;
+            set
+            {
+                _userSettings.TaskbarWidget = value;
                 OnPropertyChanged();
             }
         }
@@ -92,10 +103,12 @@ namespace LGSTrayUI
             MainTaskbarIconWrapper mainTaskbarIconWrapper,
             ILogiDeviceCollection logiDeviceCollection,
             UserSettingsWrapper userSettings,
-            IEnumerable<IDeviceManager> deviceManagers
+            IEnumerable<IDeviceManager> deviceManagers,
+            TaskbarWidgetManager taskbarWidgetManager
         )
         {
             _mainTaskbarIconWrapper = mainTaskbarIconWrapper;
+            _taskbarWidgetManager = taskbarWidgetManager;
             ((ContextMenu)Application.Current.FindResource("SysTrayMenu")).DataContext = this;
 
             _logiDevices = (logiDeviceCollection as LogiDeviceCollection)!.Devices;
@@ -153,6 +166,7 @@ namespace LGSTrayUI
         public Task StopAsync(CancellationToken cancellationToken)
         {
             _mainTaskbarIconWrapper.Dispose();
+            _taskbarWidgetManager.Dispose();
             return Task.CompletedTask;
         }
     }
