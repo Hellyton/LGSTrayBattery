@@ -8,7 +8,7 @@ public class MainTaskBarIcon : TaskbarIcon
 {
     public MainTaskBarIcon() : base()
     {
-        ContextMenu = (System.Windows.Controls.ContextMenu) Application.Current.FindResource("SysTrayMenu");
+        TrayMenuHelper.Attach(this);
         BatteryIconDrawing.DrawUnknown(this);
     }
 }

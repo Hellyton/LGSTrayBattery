@@ -86,6 +86,7 @@ namespace LGSTrayUI
         public LogiDeviceIcon(LogiDevice device, AppSettings appSettings, UserSettingsWrapper userSettings)
         {
             InitializeComponent();
+            TrayMenuHelper.Attach(taskbarIcon);
 
             if (!appSettings.UI.EnableRichToolTips)
                 taskbarIcon.TrayToolTip = null;

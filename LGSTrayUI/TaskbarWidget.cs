@@ -158,16 +158,7 @@ public class TaskbarWidget : Window
         Rebuild();
     }
 
-    private void ShowMenu()
-    {
-        var menu = (ContextMenu)Application.Current.FindResource("SysTrayMenu");
-        if (menu.IsOpen) menu.IsOpen = false;
-
-        SetForegroundWindow(_hwnd);
-        menu.PlacementTarget = this;
-        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
-        menu.IsOpen = true;
-    }
+    private static void ShowMenu() => TrayMenuHelper.Show();
 
     private void OnClosed(object? sender, EventArgs e)
     {
