@@ -88,6 +88,7 @@ public class TaskbarWidget : Window
 
     [DllImport("user32.dll")] private static extern IntPtr SetWindowLongPtr(IntPtr h, int idx, IntPtr val);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr h);
 
     [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] private struct MONITORINFO { public int cbSize; public RECT rcMonitor; public RECT rcWork; public uint dwFlags; }
@@ -124,7 +125,14 @@ public class TaskbarWidget : Window
 
         _row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4, 0, 4, 0) };
         Content = _row;
-        ContextMenu = (ContextMenu)Application.Current.FindResource("SysTrayMenu");
+        // Don't use the ContextMenu property: the window is WS_EX_NOACTIVATE, so WPF's default
+        // handling opens the menu without focus and it closes immediately. Open it ourselves
+        // after taking the foreground (same trick tray icons use).
+        MouseRightButtonUp += (_, e) =>
+        {
+            e.Handled = true;
+            ShowMenu();
+        };
 
         _devices.Devices.CollectionChanged += OnDevicesChanged;
         foreach (var d in _devices.Devices)
@@ -148,6 +156,17 @@ public class TaskbarWidget : Window
         Closed += OnClosed;
 
         Rebuild();
+    }
+
+    private void ShowMenu()
+    {
+        var menu = (ContextMenu)Application.Current.FindResource("SysTrayMenu");
+        if (menu.IsOpen) menu.IsOpen = false;
+
+        SetForegroundWindow(_hwnd);
+        menu.PlacementTarget = this;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+        menu.IsOpen = true;
     }
 
     private void OnClosed(object? sender, EventArgs e)
