@@ -86,12 +86,14 @@ public class TaskbarWidget : Window
     [DllImport("user32.dll")] private static extern bool GetMonitorInfo(IntPtr mon, ref MONITORINFO mi);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr h, StringBuilder sb, int max);
 
+    [DllImport("user32.dll")] private static extern IntPtr SetWindowLongPtr(IntPtr h, int idx, IntPtr val);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+
     [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] private struct MONITORINFO { public int cbSize; public RECT rcMonitor; public RECT rcWork; public uint dwFlags; }
 
-    private static readonly IntPtr HWND_TOPMOST = new(-1);
-    private const uint SWP_NOSIZE = 0x1, SWP_NOACTIVATE = 0x10, SWP_SHOWWINDOW = 0x40;
-    private const int GWL_EXSTYLE = -20, WS_EX_TOOLWINDOW = 0x80, WS_EX_NOACTIVATE = 0x08000000;
+    private const uint SWP_NOSIZE = 0x1, SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10;
+    private const int GWL_EXSTYLE = -20, GWLP_HWNDPARENT = -8, WS_EX_TOOLWINDOW = 0x80, WS_EX_NOACTIVATE = 0x08000000;
     private const uint MONITOR_DEFAULTTONEAREST = 2;
     #endregion
 
@@ -102,6 +104,7 @@ public class TaskbarWidget : Window
     private readonly StackPanel _row;
     private readonly DispatcherTimer _positionTimer;
     private IntPtr _hwnd;
+    private IntPtr _owner;
 
     public TaskbarWidget(LogiDeviceCollection devices)
     {
@@ -258,11 +261,21 @@ public class TaskbarWidget : Window
         if (_hwnd == IntPtr.Zero) return;
 
         IntPtr tray = FindWindow("Shell_TrayWnd", null);
-        if (tray == IntPtr.Zero || ForegroundIsFullscreen())
+        if (tray == IntPtr.Zero || ForegroundIsFullscreen(tray))
         {
             if (IsVisible) Hide();
             return;
         }
+
+        // Owned windows always stay above their owner, so making the taskbar our owner keeps
+        // the widget on top of it without fighting it for the topmost z-order (which flickers
+        // whenever the taskbar is activated, e.g. when opening the "^" overflow flyout).
+        if (_owner != tray)
+        {
+            SetWindowLongPtr(_hwnd, GWLP_HWNDPARENT, tray);
+            _owner = tray;
+        }
+
         if (!IsVisible) Show();
 
         GetWindowRect(tray, out RECT tb);
@@ -279,14 +292,21 @@ public class TaskbarWidget : Window
         int h = me.Bottom - me.Top;
         int x = right - w - GapPx;
         int y = tb.Top + ((tb.Bottom - tb.Top) - h) / 2;
-        SetWindowPos(_hwnd, HWND_TOPMOST, x, y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        if (x == me.Left && y == me.Top) return; // already in place, don't touch z-order
+
+        SetWindowPos(_hwnd, IntPtr.Zero, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
     /// <summary>Hide while a game/video is fullscreen so the widget never overlays it.</summary>
-    private bool ForegroundIsFullscreen()
+    private bool ForegroundIsFullscreen(IntPtr tray)
     {
         IntPtr fg = GetForegroundWindow();
         if (fg == IntPtr.Zero || fg == _hwnd || fg == GetShellWindow()) return false;
+
+        // Anything owned by the shell (taskbar, overflow flyout, Start, etc.) is never "fullscreen".
+        GetWindowThreadProcessId(tray, out uint shellPid);
+        GetWindowThreadProcessId(fg, out uint fgPid);
+        if (fgPid == shellPid) return false;
 
         var sb = new StringBuilder(64);
         GetClassName(fg, sb, sb.Capacity);
