@@ -9,15 +9,17 @@ namespace LGSTrayUI
     public class LogiDeviceViewModelFactory
     {
         private readonly LogiDeviceIconFactory _logiDeviceIconFactory;
+        private readonly UserSettingsWrapper _userSettings;
 
-        public LogiDeviceViewModelFactory(LogiDeviceIconFactory logiDeviceIconFactory)
+        public LogiDeviceViewModelFactory(LogiDeviceIconFactory logiDeviceIconFactory, UserSettingsWrapper userSettings)
         {
             _logiDeviceIconFactory = logiDeviceIconFactory;
+            _userSettings = userSettings;
         }
 
         public LogiDeviceViewModel CreateViewModel(Action<LogiDeviceViewModel>? config = null)
         {
-            LogiDeviceViewModel output = new(_logiDeviceIconFactory);
+            LogiDeviceViewModel output = new(_logiDeviceIconFactory, _userSettings);
             config?.Invoke(output);
 
             return output;
@@ -33,14 +35,31 @@ namespace LGSTrayUI
 
         private LogiDeviceIcon? taskbarIcon;
 
-        public LogiDeviceViewModel(LogiDeviceIconFactory logiDeviceIconFactory)
+        private readonly UserSettingsWrapper _userSettings;
+
+        public LogiDeviceViewModel(LogiDeviceIconFactory logiDeviceIconFactory, UserSettingsWrapper userSettings)
         {
             _logiDeviceIconFactory = logiDeviceIconFactory;
+            _userSettings = userSettings;
+
+            _userSettings.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(UserSettingsWrapper.TaskbarWidget))
+                {
+                    UpdateTrayIcon();
+                }
+            };
         }
 
-        partial void OnIsCheckedChanged(bool oldValue, bool newValue)
+        partial void OnIsCheckedChanged(bool oldValue, bool newValue) => UpdateTrayIcon();
+
+        /// <summary>
+        /// A selected device gets its own tray icon, unless the taskbar widget is on:
+        /// the widget already shows the battery, so the tray icons would just be duplicates.
+        /// </summary>
+        private void UpdateTrayIcon()
         {
-            if (newValue)
+            if (IsChecked && !_userSettings.TaskbarWidget)
             {
                 taskbarIcon ??= _logiDeviceIconFactory.CreateDeviceIcon(this);
             }
